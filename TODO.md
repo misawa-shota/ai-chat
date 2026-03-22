@@ -2,20 +2,18 @@
 
 ## Phase 1: プロジェクト初期化
 
-- [ ] Next.jsプロジェクトの作成
+- [x] Next.jsプロジェクトの作成
   ```bash
   npx create-next-app@latest . --typescript --tailwind --eslint --app --src-dir=false --import-alias="@/*"
   ```
-- [ ] 依存パッケージのインストール
+- [x] 依存パッケージのインストール
   ```bash
-  npm install hono @hono/node-server @ai-sdk/anthropic mastra @mastra/core
-  npm install prisma @prisma/client
-  npm install uuid
+  npm install hono @mastra/core prisma @prisma/client uuid
   npm install -D @types/uuid
   ```
-- [ ] `.env.local` の作成（`.env.example` をコピーして記入）
-- [ ] `.env.example` の作成
-- [ ] `.gitignore` に `.env.local` が含まれていることを確認
+- [x] `.env.local` の作成（`.env.example` をコピーして記入）
+- [x] `.env.example` の作成
+- [x] `.gitignore` に `.env.local` が含まれていることを確認
 
 ---
 
