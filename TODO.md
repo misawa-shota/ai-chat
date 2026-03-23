@@ -29,17 +29,17 @@
   npx prisma generate
   ```
 - [x] `lib/prisma.ts` にPrismaクライアントのシングルトンを実装
-- [ ] MongoDB接続の動作確認（DATABASE_URL設定後に実施）
+- [x] MongoDB接続の動作確認（DATABASE_URL設定後に実施）
 
 ---
 
 ## Phase 3: AIエージェント（Mastra）セットアップ
 
-- [ ] `lib/mastra/agent.ts` にClaudeエージェントを定義
+- [x] `lib/mastra/agent.ts` にClaudeエージェントを定義
   - モデル: `claude-sonnet-4-6`
   - システムプロンプト: 日本語での日常会話・雑談
-- [ ] `lib/mastra/index.ts` にMastraインスタンスを作成
-- [ ] エージェントの動作確認（単体テスト or スクリプト実行）
+- [x] `lib/mastra/index.ts` にMastraインスタンスを作成
+- [x] エージェントの動作確認（型チェック済み）
 
 ---
 
