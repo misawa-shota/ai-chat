@@ -19,17 +19,17 @@
 
 ## Phase 2: データベース・ORM セットアップ
 
-- [ ] Prismaの初期化
+- [x] Prismaの初期化
   ```bash
   npx prisma init
   ```
-- [ ] `prisma/schema.prisma` にMongoDBスキーマを定義（Session / Message）
-- [ ] Prismaクライアントの生成
+- [x] `prisma/schema.prisma` にMongoDBスキーマを定義（Session / Message）
+- [x] Prismaクライアントの生成
   ```bash
   npx prisma generate
   ```
-- [ ] `lib/prisma.ts` にPrismaクライアントのシングルトンを実装
-- [ ] MongoDB接続の動作確認
+- [x] `lib/prisma.ts` にPrismaクライアントのシングルトンを実装
+- [ ] MongoDB接続の動作確認（DATABASE_URL設定後に実施）
 
 ---
 
