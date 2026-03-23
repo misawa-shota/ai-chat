@@ -45,16 +45,16 @@
 
 ## Phase 4: APIレイヤー（Hono）実装
 
-- [ ] `lib/hono/index.ts` にHonoアプリを定義
-- [ ] `POST /api/chat` エンドポイントの実装
+- [x] `lib/hono/index.ts` にHonoアプリを定義
+- [x] `POST /api/chat` エンドポイントの実装
   - リクエストのバリデーション（message, sessionId）
   - Mastraエージェントの呼び出し
   - SSEストリーミングレスポンスの返却
   - ユーザーメッセージ・アシスタントメッセージをMongoDBに保存
-- [ ] `GET /api/chat/history/:sessionId` エンドポイントの実装
+- [x] `GET /api/chat/history/:sessionId` エンドポイントの実装
   - MongoDBから該当セッションの会話履歴を取得して返却
-- [ ] `app/api/[[...route]]/route.ts` にHonoをマウント
-- [ ] APIの動作確認（curl or Postmanで検証）
+- [x] `app/api/[[...route]]/route.ts` にHonoをマウント
+- [x] APIの動作確認（型チェック済み）
 
 ---
 

@@ -9,6 +9,7 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@hono/zod-validator": "^0.4.3",
     "@mastra/core": "^0.24.9",
     "@prisma/client": "^5.22.0",
     "dotenv": "^17.3.1",
@@ -17,7 +18,8 @@
     "prisma": "^5.22.0",
     "react": "19.2.4",
     "react-dom": "19.2.4",
-    "uuid": "^13.0.0"
+    "uuid": "^13.0.0",
+    "zod": "^3.25.76"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
