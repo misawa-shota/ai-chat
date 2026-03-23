@@ -60,26 +60,26 @@
 
 ## Phase 5: フロントエンド実装
 
-- [ ] `app/layout.tsx` のルートレイアウト作成
+- [x] `app/layout.tsx` のルートレイアウト作成
   - フォント設定、メタ情報
-- [ ] `app/globals.css` のグローバルスタイル定義
+- [x] `app/globals.css` のグローバルスタイル定義
   - ビジネスライクなカラーパレット（白・グレー・ネイビー系）
-- [ ] `app/page.tsx` のメインページ作成
+- [x] `app/page.tsx` のメインページ作成
   - sessionIdの生成・localStorageへの保存
   - 初回アクセス時に履歴取得APIを呼び出し、過去のメッセージを復元
-- [ ] `components/ChatWindow.tsx` の実装
+- [x] `components/ChatWindow.tsx` の実装
   - メッセージ一覧の表示
   - 新しいメッセージへの自動スクロール
-- [ ] `components/MessageBubble.tsx` の実装
+- [x] `components/MessageBubble.tsx` の実装
   - ユーザー / アシスタント別のバブルデザイン
   - ストリーミング中のローディング表示
-- [ ] `components/ChatInput.tsx` の実装
+- [x] `components/ChatInput.tsx` の実装
   - テキスト入力フォーム
   - 送信ボタン（Enterキー送信対応）
   - 送信中の入力無効化
-- [ ] SSEストリーミング受信処理の実装（`fetch` + `ReadableStream`）
-- [ ] レスポンシブデザインの適用
-  - モバイル（~768px）、タブレット（~1024px）、デスクトップ対応
+- [x] SSEストリーミング受信処理の実装（`fetch` + `ReadableStream`）
+- [x] レスポンシブデザインの適用
+  - モバイル（~768px）、タブレット（~1024px）、デスクトップ対応（max-w-2xl）
 
 ---
 
