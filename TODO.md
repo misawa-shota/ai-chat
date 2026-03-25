@@ -118,20 +118,19 @@
 
 ## Phase 8: Google Cloud Runへのデプロイ
 
-- [ ] Google Cloud プロジェクトの準備
-  - プロジェクトID確認
-  - Cloud Run API・Cloud Build APIの有効化
-- [ ] Container Registryへのイメージプッシュ
-  ```bash
-  gcloud builds submit --tag gcr.io/PROJECT_ID/ai-chat
-  ```
-- [ ] Cloud Runへのデプロイ
-  - リージョン: `asia-northeast1`
-  - 最小インスタンス: 1、最大インスタンス: 3
+- [x] Google Cloud プロジェクトの準備（手順をREADMEに記載）
+  - 必要API: Cloud Run / Cloud Build / Artifact Registry / Secret Manager
+  - Secret Managerへのシークレット登録手順を記載
+- [x] デプロイ設定ファイルの作成
+  - `cloudbuild.yaml`: Cloud Buildによる自動ビルド&デプロイ設定
+  - `.github/workflows/deploy.yml`: mainブランチpush時の自動デプロイ（Workload Identity Federation）
+  - `scripts/deploy.sh`: 手動デプロイスクリプト
+- [x] Cloud Runデプロイ設定
+  - リージョン: `asia-northeast1`、最小インスタンス: 1、最大インスタンス: 3
   - 同時実行数: 10、メモリ: 512Mi
-  - 環境変数の設定（ANTHROPIC_API_KEY, DATABASE_URL）
-- [ ] デプロイ後の動作確認（本番URL）
-- [ ] Cloud Runのログ確認
+  - 環境変数はSecret Manager経由で注入
+- [ ] デプロイ後の動作確認（GCPプロジェクト設定後に実施）
+- [ ] Cloud Runのログ確認（同上）
 
 ---
 

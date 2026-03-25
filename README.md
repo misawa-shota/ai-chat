@@ -1,36 +1,132 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# AI Chat
 
-## Getting Started
+Claudeを使ったエンターテイメント目的のAIチャットWebアプリケーション。
 
-First, run the development server:
+## 技術スタック
+
+- **フロントエンド/バックエンド**: Next.js 16 (App Router)
+- **APIレイヤー**: Hono
+- **AIエージェント**: Mastra + Claude (claude-sonnet-4-6)
+- **ORM**: Prisma 5
+- **データベース**: MongoDB
+- **デプロイ**: Google Cloud Run
+
+## ローカル開発
+
+### 前提条件
+
+- Node.js 20+
+- MongoDB (Atlas等)
+- Anthropic APIキー
+
+### セットアップ
 
 ```bash
+# 依存関係インストール
+npm install
+
+# 環境変数を設定
+cp .env.example .env.local
+# .env.local を編集して ANTHROPIC_API_KEY と DATABASE_URL を設定
+
+# Prismaクライアント生成
+npx prisma generate
+
+# 開発サーバー起動
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+ブラウザで [http://localhost:3000](http://localhost:3000) を開く。
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+### テスト
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```bash
+npm test
+```
 
-## Learn More
+## Google Cloud Runへのデプロイ
 
-To learn more about Next.js, take a look at the following resources:
+### 事前準備
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+1. [Google Cloud Console](https://console.cloud.google.com) でプロジェクトを作成
+2. 必要なAPIを有効化：
+   ```bash
+   gcloud services enable run.googleapis.com \
+     cloudbuild.googleapis.com \
+     artifactregistry.googleapis.com \
+     secretmanager.googleapis.com
+   ```
+3. Secret Managerにシークレットを登録：
+   ```bash
+   echo -n "your-anthropic-api-key" | \
+     gcloud secrets create ANTHROPIC_API_KEY --data-file=-
+   echo -n "mongodb+srv://..." | \
+     gcloud secrets create DATABASE_URL --data-file=-
+   ```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+### 手動デプロイ
 
-## Deploy on Vercel
+```bash
+./scripts/deploy.sh <GCP_PROJECT_ID>
+```
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+### GitHub Actionsによる自動デプロイ
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+`main` ブランチへのプッシュで自動デプロイされます。
+
+以下のシークレットをGitHubリポジトリに設定してください：
+
+| シークレット名 | 内容 |
+|---|---|
+| `GCP_PROJECT_ID` | Google CloudプロジェクトID |
+| `GCP_WORKLOAD_IDENTITY_PROVIDER` | Workload Identity ProviderのリソースID |
+| `GCP_SERVICE_ACCOUNT` | デプロイ用サービスアカウントのメール |
+
+#### Workload Identity Federation の設定
+
+```bash
+PROJECT_ID="your-project-id"
+SA_NAME="github-actions-deploy"
+
+# サービスアカウント作成
+gcloud iam service-accounts create ${SA_NAME} \
+  --display-name="GitHub Actions Deploy"
+
+# 必要な権限を付与
+for role in roles/run.admin roles/artifactregistry.writer roles/secretmanager.secretAccessor; do
+  gcloud projects add-iam-policy-binding ${PROJECT_ID} \
+    --member="serviceAccount:${SA_NAME}@${PROJECT_ID}.iam.gserviceaccount.com" \
+    --role="${role}"
+done
+
+# Workload Identity Pool を作成
+gcloud iam workload-identity-pools create "github-pool" \
+  --location="global" \
+  --display-name="GitHub Actions Pool"
+
+# Provider を作成
+gcloud iam workload-identity-pools providers create-oidc "github-provider" \
+  --location="global" \
+  --workload-identity-pool="github-pool" \
+  --display-name="GitHub Provider" \
+  --attribute-mapping="google.subject=assertion.sub,attribute.repository=assertion.repository" \
+  --issuer-uri="https://token.actions.githubusercontent.com"
+
+# バインディングを設定（自分のリポジトリに書き換える）
+REPO="your-github-username/ai-chat"
+gcloud iam service-accounts add-iam-policy-binding \
+  "${SA_NAME}@${PROJECT_ID}.iam.gserviceaccount.com" \
+  --role="roles/iam.workloadIdentityUser" \
+  --member="principalSet://iam.googleapis.com/projects/$(gcloud projects describe ${PROJECT_ID} --format='value(projectNumber)')/locations/global/workloadIdentityPools/github-pool/attribute.repository/${REPO}"
+```
+
+## Cloud Run設定
+
+| 項目 | 値 |
+|---|---|
+| リージョン | asia-northeast1 (東京) |
+| 最小インスタンス数 | 1 |
+| 最大インスタンス数 | 3 |
+| 同時実行数 | 10 |
+| メモリ | 512Mi |
+| CPU | 1 |

@@ -1,0 +1,42 @@
+steps:
+  # 1. Dockerイメージをビルド
+  - name: "gcr.io/cloud-builders/docker"
+    args:
+      - build
+      - "-t"
+      - "asia-northeast1-docker.pkg.dev/$PROJECT_ID/ai-chat/ai-chat:$COMMIT_SHA"
+      - "-t"
+      - "asia-northeast1-docker.pkg.dev/$PROJECT_ID/ai-chat/ai-chat:latest"
+      - "."
+
+  # 2. Artifact Registryへプッシュ
+  - name: "gcr.io/cloud-builders/docker"
+    args:
+      - push
+      - "--all-tags"
+      - "asia-northeast1-docker.pkg.dev/$PROJECT_ID/ai-chat/ai-chat"
+
+  # 3. Cloud Runへデプロイ
+  - name: "gcr.io/google.com/cloudsdktool/cloud-sdk"
+    entrypoint: gcloud
+    args:
+      - run
+      - deploy
+      - ai-chat
+      - "--image=asia-northeast1-docker.pkg.dev/$PROJECT_ID/ai-chat/ai-chat:$COMMIT_SHA"
+      - "--platform=managed"
+      - "--region=asia-northeast1"
+      - "--allow-unauthenticated"
+      - "--min-instances=1"
+      - "--max-instances=3"
+      - "--concurrency=10"
+      - "--memory=512Mi"
+      - "--cpu=1"
+      - "--set-secrets=ANTHROPIC_API_KEY=ANTHROPIC_API_KEY:latest,DATABASE_URL=DATABASE_URL:latest"
+
+images:
+  - "asia-northeast1-docker.pkg.dev/$PROJECT_ID/ai-chat/ai-chat:$COMMIT_SHA"
+  - "asia-northeast1-docker.pkg.dev/$PROJECT_ID/ai-chat/ai-chat:latest"
+
+options:
+  logging: CLOUD_LOGGING_ONLY
