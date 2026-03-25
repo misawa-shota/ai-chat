@@ -104,14 +104,15 @@
 
 ## Phase 7: Dockerイメージ作成
 
-- [ ] `Dockerfile` の作成（マルチステージビルド）
-- [ ] `.dockerignore` の作成
-- [ ] ローカルでのDockerビルド確認
+- [x] `Dockerfile` の作成（マルチステージビルド: deps / builder / runner）
+- [x] `.dockerignore` の作成
+- [x] `next.config.ts` に `output: "standalone"` を追加
+- [ ] ローカルでのDockerビルド確認（Docker Desktop起動後に実施）
   ```bash
   docker build -t ai-chat .
   docker run -p 3000:3000 --env-file .env.local ai-chat
   ```
-- [ ] Dockerコンテナ上での動作確認
+- [ ] Dockerコンテナ上での動作確認（同上）
 
 ---
 
