@@ -18,14 +18,15 @@ app.post("/chat", zValidator("json", chatSchema), async (c) => {
   const { message, sessionId } = c.req.valid("json");
 
   // 既存の会話履歴をMongoDBから取得
-  const session = await prisma.session.findUnique({
-    where: { sessionId },
-    include: {
-      messages: {
-        orderBy: { createdAt: "asc" },
-      },
-    },
-  });
+  let session;
+  try {
+    session = await prisma.session.findUnique({
+      where: { sessionId },
+      include: { messages: { orderBy: { createdAt: "asc" } } },
+    });
+  } catch {
+    return c.json({ error: "データベースへの接続に失敗しました" }, 503);
+  }
 
   // Mastra用メッセージ配列を構築（履歴 + 新しいユーザーメッセージ）
   const history: CoreMessage[] = (session?.messages ?? []).map((m) => ({
@@ -38,20 +39,20 @@ app.post("/chat", zValidator("json", chatSchema), async (c) => {
   ];
 
   // ユーザーメッセージをMongoDBに保存
-  await prisma.session.upsert({
-    where: { sessionId },
-    create: {
-      sessionId,
-      messages: {
-        create: { role: "user", content: message },
+  try {
+    await prisma.session.upsert({
+      where: { sessionId },
+      create: {
+        sessionId,
+        messages: { create: { role: "user", content: message } },
       },
-    },
-    update: {
-      messages: {
-        create: { role: "user", content: message },
+      update: {
+        messages: { create: { role: "user", content: message } },
       },
-    },
-  });
+    });
+  } catch {
+    return c.json({ error: "メッセージの保存に失敗しました" }, 503);
+  }
 
   return streamSSE(c, async (stream) => {
     let fullResponse = "";
@@ -68,21 +69,23 @@ app.post("/chat", zValidator("json", chatSchema), async (c) => {
 
       // アシスタントの応答をMongoDBに保存
       await prisma.message.create({
-        data: {
-          sessionId,
-          role: "assistant",
-          content: fullResponse,
-        },
+        data: { sessionId, role: "assistant", content: fullResponse },
       });
 
-      await stream.writeSSE({
-        data: JSON.stringify({ type: "done" }),
-      });
-    } catch {
+      await stream.writeSSE({ data: JSON.stringify({ type: "done" }) });
+    } catch (err) {
+      const isAuthError =
+        err instanceof Error &&
+        (err.message.includes("401") ||
+          err.message.toLowerCase().includes("api key") ||
+          err.message.toLowerCase().includes("authentication"));
+
       await stream.writeSSE({
         data: JSON.stringify({
           type: "error",
-          message: "AI応答の生成に失敗しました",
+          message: isAuthError
+            ? "APIキーが無効です。設定を確認してください"
+            : "AI応答の生成に失敗しました",
         }),
       });
     }
@@ -93,14 +96,15 @@ app.post("/chat", zValidator("json", chatSchema), async (c) => {
 app.get("/chat/history/:sessionId", async (c) => {
   const { sessionId } = c.req.param();
 
-  const session = await prisma.session.findUnique({
-    where: { sessionId },
-    include: {
-      messages: {
-        orderBy: { createdAt: "asc" },
-      },
-    },
-  });
+  let session;
+  try {
+    session = await prisma.session.findUnique({
+      where: { sessionId },
+      include: { messages: { orderBy: { createdAt: "asc" } } },
+    });
+  } catch {
+    return c.json({ error: "データベースへの接続に失敗しました" }, 503);
+  }
 
   if (!session) {
     return c.json({ sessionId, messages: [] });
@@ -114,6 +118,11 @@ app.get("/chat/history/:sessionId", async (c) => {
       createdAt: m.createdAt,
     })),
   });
+});
+
+// GET /api/health
+app.get("/health", (c) => {
+  return c.json({ status: "ok" });
 });
 
 export { app };

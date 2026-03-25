@@ -5,6 +5,7 @@ import { v4 as uuidv4 } from "uuid";
 import ChatWindow from "@/components/ChatWindow";
 import ChatInput from "@/components/ChatInput";
 import type { Message } from "@/components/MessageBubble";
+import { parseSSEChunk } from "@/lib/parseSSE";
 
 const SESSION_KEY = "ai-chat-session-id";
 
@@ -69,30 +70,21 @@ export default function ChatPage() {
         if (done) break;
 
         const text = decoder.decode(value, { stream: true });
-        // SSEの "data: {...}\n\n" 形式をパース
-        const lines = text.split("\n");
-        for (const line of lines) {
-          if (!line.startsWith("data: ")) continue;
-          const raw = line.slice(6).trim();
-          if (!raw) continue;
+        const events = parseSSEChunk(text);
 
-          try {
-            const event = JSON.parse(raw);
-            if (event.type === "delta") {
-              accumulated += event.content;
-              setStreamingContent(accumulated);
-            } else if (event.type === "done") {
-              setMessages((prev) => [
-                ...prev,
-                { role: "assistant", content: accumulated },
-              ]);
-              setStreamingContent("");
-              setIsStreaming(false);
-            } else if (event.type === "error") {
-              throw new Error(event.message);
-            }
-          } catch {
-            // JSON parse失敗は無視
+        for (const event of events) {
+          if (event.type === "delta") {
+            accumulated += event.content;
+            setStreamingContent(accumulated);
+          } else if (event.type === "done") {
+            setMessages((prev) => [
+              ...prev,
+              { role: "assistant", content: accumulated },
+            ]);
+            setStreamingContent("");
+            setIsStreaming(false);
+          } else if (event.type === "error") {
+            throw new Error(event.message);
           }
         }
       }
