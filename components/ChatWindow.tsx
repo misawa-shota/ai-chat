@@ -36,7 +36,7 @@ export default function ChatWindow({
 
         {isStreaming && streamingContent && (
           <MessageBubble
-            message={{ role: "assistant", content: streamingContent }}
+            message={{ id: "streaming", role: "assistant", content: streamingContent }}
             isStreaming
           />
         )}
