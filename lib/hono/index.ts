@@ -24,7 +24,8 @@ app.post("/chat", zValidator("json", chatSchema), async (c) => {
       where: { sessionId },
       include: { messages: { orderBy: { createdAt: "asc" } } },
     });
-  } catch {
+  } catch (e) {
+    console.error("[DB] session fetch error:", e);
     return c.json({ error: "データベースへの接続に失敗しました" }, 503);
   }
 
@@ -50,7 +51,8 @@ app.post("/chat", zValidator("json", chatSchema), async (c) => {
         messages: { create: { role: "user", content: message } },
       },
     });
-  } catch {
+  } catch (e) {
+    console.error("[DB] upsert error:", e);
     return c.json({ error: "メッセージの保存に失敗しました" }, 503);
   }
 
@@ -74,6 +76,7 @@ app.post("/chat", zValidator("json", chatSchema), async (c) => {
 
       await stream.writeSSE({ data: JSON.stringify({ type: "done" }) });
     } catch (err) {
+      console.error("[AI] stream error:", err);
       const isAuthError =
         err instanceof Error &&
         (err.message.includes("401") ||
