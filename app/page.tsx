@@ -9,6 +9,10 @@ import { parseSSEChunk } from "@/lib/parseSSE";
 
 const SESSION_KEY = "ai-chat-session-id";
 
+function newMessage(role: "user" | "assistant", content: string): Message {
+  return { id: crypto.randomUUID(), role, content };
+}
+
 export default function ChatPage() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [isStreaming, setIsStreaming] = useState(false);
@@ -23,16 +27,14 @@ export default function ChatPage() {
     if (!stored) localStorage.setItem(SESSION_KEY, sessionId);
     sessionIdRef.current = sessionId;
 
-    // 過去の会話履歴を取得
     fetch(`/api/chat/history/${sessionId}`)
       .then((res) => res.json())
       .then((data) => {
         if (data.messages?.length > 0) {
           setMessages(
-            data.messages.map((m: { role: string; content: string }) => ({
-              role: m.role as "user" | "assistant",
-              content: m.content,
-            }))
+            data.messages.map((m: { role: string; content: string }) =>
+              newMessage(m.role as "user" | "assistant", m.content)
+            )
           );
         }
       })
@@ -41,9 +43,19 @@ export default function ChatPage() {
       });
   }, []);
 
+  const handleNewChat = useCallback(() => {
+    const newId = uuidv4();
+    localStorage.setItem(SESSION_KEY, newId);
+    sessionIdRef.current = newId;
+    setMessages([]);
+    setError(null);
+    setStreamingContent("");
+    setIsStreaming(false);
+  }, []);
+
   const handleSend = useCallback(async (message: string) => {
     setError(null);
-    setMessages((prev) => [...prev, { role: "user", content: message }]);
+    setMessages((prev) => [...prev, newMessage("user", message)]);
     setIsStreaming(true);
     setStreamingContent("");
 
@@ -58,12 +70,14 @@ export default function ChatPage() {
       });
 
       if (!res.ok || !res.body) {
-        throw new Error("サーバーエラーが発生しました");
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body.error ?? "サーバーエラーが発生しました");
       }
 
       const reader = res.body.getReader();
       const decoder = new TextDecoder();
       let accumulated = "";
+      let doneReceived = false;
 
       while (true) {
         const { done, value } = await reader.read();
@@ -77,9 +91,10 @@ export default function ChatPage() {
             accumulated += event.content;
             setStreamingContent(accumulated);
           } else if (event.type === "done") {
+            doneReceived = true;
             setMessages((prev) => [
               ...prev,
-              { role: "assistant", content: accumulated },
+              newMessage("assistant", accumulated),
             ]);
             setStreamingContent("");
             setIsStreaming(false);
@@ -87,6 +102,13 @@ export default function ChatPage() {
             throw new Error(event.message);
           }
         }
+      }
+
+      // ストリーム終了時に "done" を受信できなかった場合でも部分レスポンスを保持
+      if (!doneReceived && accumulated) {
+        setMessages((prev) => [...prev, newMessage("assistant", accumulated)]);
+        setStreamingContent("");
+        setIsStreaming(false);
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : "エラーが発生しました");
@@ -99,14 +121,23 @@ export default function ChatPage() {
     <div className="flex flex-col h-full">
       {/* Header */}
       <header className="bg-[#1e3a5f] text-white px-4 py-3 shadow-md flex-shrink-0">
-        <div className="max-w-2xl mx-auto flex items-center gap-3">
-          <div className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center text-xs font-bold">
-            AI
+        <div className="max-w-2xl mx-auto flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center text-xs font-bold">
+              AI
+            </div>
+            <div>
+              <h1 className="text-base font-semibold leading-tight">AI Chat</h1>
+              <p className="text-xs text-blue-200">何でも話しかけてください</p>
+            </div>
           </div>
-          <div>
-            <h1 className="text-base font-semibold leading-tight">AI Chat</h1>
-            <p className="text-xs text-blue-200">何でも話しかけてください</p>
-          </div>
+          <button
+            onClick={handleNewChat}
+            disabled={isStreaming}
+            className="text-xs text-blue-200 hover:text-white border border-blue-300/40 hover:border-white/60 px-3 py-1.5 rounded-lg transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+          >
+            新しい会話
+          </button>
         </div>
       </header>
 

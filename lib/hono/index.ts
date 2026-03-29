@@ -9,7 +9,7 @@ import { prisma } from "@/lib/prisma";
 const app = new Hono();
 
 const chatSchema = z.object({
-  message: z.string().min(1),
+  message: z.string().min(1).max(2000),
   sessionId: z.string().min(1),
 });
 
@@ -105,7 +105,8 @@ app.get("/chat/history/:sessionId", async (c) => {
       where: { sessionId },
       include: { messages: { orderBy: { createdAt: "asc" } } },
     });
-  } catch {
+  } catch (e) {
+    console.error("[DB] history fetch error:", e);
     return c.json({ error: "データベースへの接続に失敗しました" }, 503);
   }
 
@@ -121,6 +122,19 @@ app.get("/chat/history/:sessionId", async (c) => {
       createdAt: m.createdAt,
     })),
   });
+});
+
+// DELETE /api/chat/history/:sessionId
+app.delete("/chat/history/:sessionId", async (c) => {
+  const { sessionId } = c.req.param();
+
+  try {
+    await prisma.session.delete({ where: { sessionId } });
+  } catch {
+    // セッションが存在しない場合は無視
+  }
+
+  return c.json({ success: true });
 });
 
 // GET /api/health

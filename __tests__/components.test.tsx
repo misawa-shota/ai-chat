@@ -2,21 +2,25 @@ import { describe, it, expect, vi } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
 import MessageBubble from "@/components/MessageBubble";
 import ChatInput from "@/components/ChatInput";
+import ChatWindow from "@/components/ChatWindow";
+import type { Message } from "@/components/MessageBubble";
+
+const msg = (role: "user" | "assistant", content: string): Message => ({
+  id: crypto.randomUUID(),
+  role,
+  content,
+});
 
 describe("MessageBubble", () => {
   it("ユーザーメッセージを右寄せで表示する", () => {
-    render(
-      <MessageBubble message={{ role: "user", content: "こんにちは" }} />
-    );
+    render(<MessageBubble message={msg("user", "こんにちは")} />);
     expect(screen.getByText("こんにちは")).toBeInTheDocument();
     expect(screen.getByText("You")).toBeInTheDocument();
   });
 
   it("アシスタントメッセージを左寄せで表示する", () => {
     render(
-      <MessageBubble
-        message={{ role: "assistant", content: "はい、何でしょうか？" }}
-      />
+      <MessageBubble message={msg("assistant", "はい、何でしょうか？")} />
     );
     expect(screen.getByText("はい、何でしょうか？")).toBeInTheDocument();
     expect(screen.getByText("AI")).toBeInTheDocument();
@@ -24,12 +28,8 @@ describe("MessageBubble", () => {
 
   it("isStreaming=trueのときカーソルを表示する", () => {
     const { container } = render(
-      <MessageBubble
-        message={{ role: "assistant", content: "考え中..." }}
-        isStreaming
-      />
+      <MessageBubble message={msg("assistant", "考え中...")} isStreaming />
     );
-    // animate-pulseクラスを持つカーソル要素が存在する
     const cursor = container.querySelector(".animate-pulse");
     expect(cursor).toBeInTheDocument();
   });
@@ -37,7 +37,7 @@ describe("MessageBubble", () => {
   it("isStreaming=falseのときカーソルを表示しない", () => {
     const { container } = render(
       <MessageBubble
-        message={{ role: "assistant", content: "完了しました" }}
+        message={msg("assistant", "完了しました")}
         isStreaming={false}
       />
     );
@@ -108,5 +108,45 @@ describe("ChatInput", () => {
     fireEvent.click(button);
 
     expect(onSend).toHaveBeenCalledWith("ボタン送信テスト");
+  });
+});
+
+describe("ChatWindow", () => {
+  it("メッセージ一覧を表示する", () => {
+    const messages: Message[] = [
+      msg("user", "こんにちは"),
+      msg("assistant", "はい！"),
+    ];
+    render(
+      <ChatWindow messages={messages} streamingContent="" isStreaming={false} />
+    );
+    expect(screen.getByText("こんにちは")).toBeInTheDocument();
+    expect(screen.getByText("はい！")).toBeInTheDocument();
+  });
+
+  it("メッセージが空のとき空状態プレースホルダーを表示する", () => {
+    render(
+      <ChatWindow messages={[]} streamingContent="" isStreaming={false} />
+    );
+    expect(screen.getByText("何でも話しかけてください")).toBeInTheDocument();
+  });
+
+  it("ストリーミング中にローディングドットを表示する", () => {
+    const { container } = render(
+      <ChatWindow messages={[]} streamingContent="" isStreaming={true} />
+    );
+    const dots = container.querySelectorAll(".animate-bounce");
+    expect(dots.length).toBe(3);
+  });
+
+  it("ストリーミングコンテンツを表示する", () => {
+    render(
+      <ChatWindow
+        messages={[]}
+        streamingContent="考えています..."
+        isStreaming={true}
+      />
+    );
+    expect(screen.getByText("考えています...")).toBeInTheDocument();
   });
 });

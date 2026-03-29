@@ -1,4 +1,7 @@
+import Markdown from "react-markdown";
+
 export type Message = {
+  id: string;
   role: "user" | "assistant";
   content: string;
 };
@@ -25,7 +28,13 @@ export default function MessageBubble({ message, isStreaming }: Props) {
             : "bg-white text-gray-800 border border-gray-200 rounded-tl-sm shadow-sm"
         }`}
       >
-        <p className="whitespace-pre-wrap break-words">{message.content}</p>
+        {isUser ? (
+          <p className="whitespace-pre-wrap break-words">{message.content}</p>
+        ) : (
+          <div className="prose prose-sm max-w-none prose-p:my-1 prose-pre:bg-gray-100 prose-pre:text-gray-800 prose-code:bg-gray-100 prose-code:px-1 prose-code:rounded">
+            <Markdown>{message.content}</Markdown>
+          </div>
+        )}
         {isStreaming && (
           <span className="inline-block w-1.5 h-4 bg-gray-400 ml-0.5 animate-pulse rounded-sm" />
         )}

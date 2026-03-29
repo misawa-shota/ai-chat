@@ -30,8 +30,8 @@ export default function ChatWindow({
           </div>
         )}
 
-        {messages.map((msg, i) => (
-          <MessageBubble key={i} message={msg} />
+        {messages.map((msg) => (
+          <MessageBubble key={msg.id} message={msg} />
         ))}
 
         {isStreaming && streamingContent && (
