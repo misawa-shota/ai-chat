@@ -69,6 +69,17 @@ app.post("/chat", zValidator("json", chatSchema), async (c) => {
         });
       }
 
+      // Mastraがエラーを内部吸収して空ストリームを返した場合
+      if (!fullResponse) {
+        await stream.writeSSE({
+          data: JSON.stringify({
+            type: "error",
+            message: "AIからの応答が空でした。しばらくしてから再度お試しください",
+          }),
+        });
+        return;
+      }
+
       // アシスタントの応答をMongoDBに保存
       await prisma.message.create({
         data: { sessionId, role: "assistant", content: fullResponse },
