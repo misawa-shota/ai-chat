@@ -8,96 +8,97 @@ Claudeを使ったエンターテイメント目的のAIチャットWebアプリ
 - **APIレイヤー**: Hono
 - **AIエージェント**: Mastra + Claude (claude-sonnet-4-6)
 - **ORM**: Prisma 5
-- **データベース**: MongoDB
-- **デプロイ**: Vercel
+- **データベース**: MongoDB Atlas
+- **デプロイ**: Google Cloud Run
+- **CI/CD**: GitHub Actions
 
 ## ローカル開発
 
 ### 前提条件
 
 - Node.js 20+
-- MongoDB (Atlas等)
-- Anthropic APIキー
+- MongoDB Atlas アカウント
+- Anthropic API キー
 
 ### セットアップ
 
 ```bash
-# 依存関係インストール
-npm install
+make setup
+# .env.local に ANTHROPIC_API_KEY と DATABASE_URL を設定
+make dev
+```
 
-# 環境変数を設定
-cp .env.example .env.local
-# .env.local を編集して ANTHROPIC_API_KEY と DATABASE_URL を設定
+または手動で：
 
-# Prismaクライアント生成
+```bash
+npm ci
 npx prisma generate
-
-# 開発サーバー起動
+cp .env.example .env.local
+# .env.local を編集
 npm run dev
 ```
 
 ブラウザで [http://localhost:3000](http://localhost:3000) を開く。
 
-### テスト
+### 主なコマンド
 
-```bash
-npm test
-```
-
----
-
-## Vercelへのデプロイ（推奨・無料）
-
-### 方法A：GitHubと連携（最も簡単）
-
-1. [vercel.com](https://vercel.com) にサインアップ / ログイン
-2. **Add New Project** → GitHubリポジトリ `ai-chat` を選択して **Import**
-3. **Environment Variables** に以下を入力：
-
-   | 変数名 | 値 |
-   |---|---|
-   | `ANTHROPIC_API_KEY` | `sk-ant-xxxx...` |
-   | `DATABASE_URL` | `mongodb+srv://...` |
-
-4. **Deploy** をクリック
-
-以降は `main` ブランチへのpushで自動デプロイされます。
-
----
-
-### 方法B：Vercel CLI
-
-```bash
-# Vercel CLIをインストール
-npm i -g vercel
-
-# デプロイ（初回はブラウザで認証・プロジェクト設定）
-vercel
-
-# 本番環境へデプロイ
-vercel --prod
-```
-
----
-
-### 方法C：GitHub Actionsによる自動デプロイ
-
-`main` ブランチへのpushでテスト→デプロイが自動実行されます。
-
-以下のシークレットをGitHubリポジトリの **Settings → Secrets and variables → Actions** に登録してください：
-
-| シークレット名 | 取得場所 |
+| コマンド | 内容 |
 |---|---|
-| `VERCEL_TOKEN` | Vercel → Settings → Tokens |
-| `VERCEL_ORG_ID` | Vercel → Settings → General → Team ID |
-| `VERCEL_PROJECT_ID` | Vercel → Project → Settings → General → Project ID |
+| `make dev` | 開発サーバー起動 |
+| `make build` | 本番ビルド |
+| `make test` | テスト実行 |
+| `make typecheck` | 型チェック |
+| `make deploy` | Cloud Run へ手動デプロイ |
 
 ---
 
-## Google Cloud Runへのデプロイ（代替）
+## デプロイ（Google Cloud Run）
 
-Cloud Runを使う場合は `scripts/deploy.sh` と `cloudbuild.yaml` を参照してください。
+### 自動デプロイ（GitHub Actions）
+
+`main` ブランチへ push すると自動でテスト → Cloud Run デプロイが実行されます。
+
+**初回セットアップ時に必要な GitHub Secrets：**
+
+| シークレット名 | 内容 |
+|---|---|
+| `GCP_PROJECT_ID` | GCP プロジェクト ID |
+| `GCP_WORKLOAD_IDENTITY_PROVIDER` | Workload Identity プロバイダのリソース名 |
+| `GCP_SERVICE_ACCOUNT` | デプロイ用サービスアカウントのメールアドレス |
+
+### 手動デプロイ
 
 ```bash
 ./scripts/deploy.sh <GCP_PROJECT_ID>
+# または
+make deploy
 ```
+
+### 初回 GCP セットアップ
+
+```bash
+# 必要な API を有効化
+gcloud services enable run.googleapis.com artifactregistry.googleapis.com \
+  cloudbuild.googleapis.com secretmanager.googleapis.com
+
+# Secret Manager にシークレットを登録
+echo -n "sk-ant-..." | gcloud secrets create ANTHROPIC_API_KEY --data-file=-
+echo -n "mongodb+srv://..." | gcloud secrets create DATABASE_URL --data-file=-
+
+# Cloud Run サービスアカウントに Secret Manager アクセス権を付与
+gcloud projects add-iam-policy-binding <PROJECT_ID> \
+  --member="serviceAccount:<PROJECT_NUMBER>-compute@developer.gserviceaccount.com" \
+  --role="roles/secretmanager.secretAccessor"
+```
+
+---
+
+## 環境変数
+
+`.env.local` に以下を設定する（`.env.example` を参照）。
+
+| 変数名 | 内容 |
+|---|---|
+| `ANTHROPIC_API_KEY` | Anthropic API キー |
+| `DATABASE_URL` | MongoDB Atlas 接続文字列 |
+| `NEXT_PUBLIC_APP_URL` | アプリの公開 URL |

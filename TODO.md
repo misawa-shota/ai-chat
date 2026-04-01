@@ -136,12 +136,14 @@
 
 ---
 
-## Phase 9: Vercelデプロイ確認（進行中）
+## Phase 9: Cloud Runデプロイ・CI/CD構築
 
-- [ ] MongoDB Atlas Network AccessにVercel用IP（`0.0.0.0/0`）を追加
-- [ ] Vercelデプロイ後の動作確認（メッセージ送信 → ストリーミング表示）
-- [ ] Vercelのファンクションログでエラーがないことを確認
-- [ ] `TODO.md` / `CLAUDE.md` のデプロイ先記述をCloud Run → Vercelに更新
+- [x] MongoDB Atlas Network Accessに `0.0.0.0/0` を追加
+- [x] Cloud Run へのデプロイ完了（`ai-chat-491714` / `asia-northeast1`）
+- [x] Prisma binaryTargets に `linux-musl-openssl-3.0.x` を追加（Alpine + OpenSSL 3対応）
+- [x] GitHub Actions による自動デプロイ実装（Workload Identity Federation）
+- [x] Vercel GitHub連携を解除（Cloud Runに一本化）
+- [x] README.md をCloud Run構成に更新
 
 ---
 
