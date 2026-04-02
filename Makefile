@@ -41,10 +41,6 @@ typecheck:
 lint:
 	npm run lint
 
-# Vercelへデプロイ（Vercel CLIが必要: npm i -g vercel）
+# Cloud Runへデプロイ（gcloud CLI と Docker が必要）
 deploy:
-	vercel --prod
-
-# Vercelへプレビューデプロイ
-deploy-preview:
-	vercel
+	bash scripts/deploy.sh ai-chat-491714
