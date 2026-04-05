@@ -9,8 +9,13 @@ import { parseSSEChunk } from "@/lib/parseSSE";
 
 const SESSION_KEY = "ai-chat-session-id";
 
-function newMessage(role: "user" | "assistant", content: string): Message {
-  return { id: crypto.randomUUID(), role, content };
+function newMessage(
+  role: "user" | "assistant",
+  content: string,
+  imageData?: string,
+  mediaType?: string
+): Message {
+  return { id: crypto.randomUUID(), role, content, imageData, mediaType };
 }
 
 export default function ChatPage() {
@@ -29,15 +34,29 @@ export default function ChatPage() {
 
     fetch(`/api/chat/history/${sessionId}`)
       .then((res) => res.json())
-      .then((data) => {
-        if (data.messages?.length > 0) {
-          setMessages(
-            data.messages.map((m: { role: string; content: string }) =>
-              newMessage(m.role as "user" | "assistant", m.content)
-            )
-          );
+      .then(
+        (data: {
+          messages?: {
+            role: string;
+            content: string;
+            imageData?: string;
+            mediaType?: string;
+          }[];
+        }) => {
+          if (data.messages && data.messages.length > 0) {
+            setMessages(
+              data.messages.map((m) =>
+                newMessage(
+                  m.role as "user" | "assistant",
+                  m.content,
+                  m.imageData,
+                  m.mediaType
+                )
+              )
+            );
+          }
         }
-      })
+      )
       .catch(() => {
         // 履歴取得失敗は無視（新規セッションとして扱う）
       });
@@ -53,69 +72,82 @@ export default function ChatPage() {
     setIsStreaming(false);
   }, []);
 
-  const handleSend = useCallback(async (message: string) => {
-    setError(null);
-    setMessages((prev) => [...prev, newMessage("user", message)]);
-    setIsStreaming(true);
-    setStreamingContent("");
+  const handleSend = useCallback(
+    async (message: string, imageData?: string, mediaType?: string) => {
+      setError(null);
+      setMessages((prev) => [
+        ...prev,
+        newMessage("user", message, imageData, mediaType),
+      ]);
+      setIsStreaming(true);
+      setStreamingContent("");
 
-    try {
-      const res = await fetch("/api/chat", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          message,
-          sessionId: sessionIdRef.current,
-        }),
-      });
+      try {
+        const res = await fetch("/api/chat", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            message,
+            sessionId: sessionIdRef.current,
+            imageData,
+            mediaType,
+          }),
+        });
 
-      if (!res.ok || !res.body) {
-        const body = await res.json().catch(() => ({}));
-        throw new Error(body.error ?? "サーバーエラーが発生しました");
-      }
+        if (!res.ok || !res.body) {
+          const body = await res.json().catch(() => ({}));
+          throw new Error(
+            (body as { error?: string }).error ?? "サーバーエラーが発生しました"
+          );
+        }
 
-      const reader = res.body.getReader();
-      const decoder = new TextDecoder();
-      let accumulated = "";
-      let doneReceived = false;
+        const reader = res.body.getReader();
+        const decoder = new TextDecoder();
+        let accumulated = "";
+        let doneReceived = false;
 
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
 
-        const text = decoder.decode(value, { stream: true });
-        const events = parseSSEChunk(text);
+          const text = decoder.decode(value, { stream: true });
+          const events = parseSSEChunk(text);
 
-        for (const event of events) {
-          if (event.type === "delta") {
-            accumulated += event.content;
-            setStreamingContent(accumulated);
-          } else if (event.type === "done") {
-            doneReceived = true;
-            setMessages((prev) => [
-              ...prev,
-              newMessage("assistant", accumulated),
-            ]);
-            setStreamingContent("");
-            setIsStreaming(false);
-          } else if (event.type === "error") {
-            throw new Error(event.message);
+          for (const event of events) {
+            if (event.type === "delta") {
+              accumulated += event.content;
+              setStreamingContent(accumulated);
+            } else if (event.type === "done") {
+              doneReceived = true;
+              setMessages((prev) => [
+                ...prev,
+                newMessage("assistant", accumulated),
+              ]);
+              setStreamingContent("");
+              setIsStreaming(false);
+            } else if (event.type === "error") {
+              throw new Error(event.message);
+            }
           }
         }
-      }
 
-      // ストリーム終了時に "done" を受信できなかった場合でも部分レスポンスを保持
-      if (!doneReceived && accumulated) {
-        setMessages((prev) => [...prev, newMessage("assistant", accumulated)]);
-        setStreamingContent("");
+        // ストリーム終了時に "done" を受信できなかった場合でも部分レスポンスを保持
+        if (!doneReceived && accumulated) {
+          setMessages((prev) => [
+            ...prev,
+            newMessage("assistant", accumulated),
+          ]);
+          setStreamingContent("");
+          setIsStreaming(false);
+        }
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "エラーが発生しました");
         setIsStreaming(false);
+        setStreamingContent("");
       }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "エラーが発生しました");
-      setIsStreaming(false);
-      setStreamingContent("");
-    }
-  }, []);
+    },
+    []
+  );
 
   return (
     <div className="flex flex-col h-full">

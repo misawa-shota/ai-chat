@@ -8,14 +8,27 @@ import { prisma } from "@/lib/prisma";
 
 const app = new Hono();
 
-const chatSchema = z.object({
-  message: z.string().min(1).max(2000),
-  sessionId: z.string().min(1),
-});
+const ALLOWED_MEDIA_TYPES = [
+  "image/jpeg",
+  "image/png",
+  "image/gif",
+  "image/webp",
+] as const;
+
+const chatSchema = z
+  .object({
+    message: z.string().max(2000).default(""),
+    sessionId: z.string().min(1),
+    imageData: z.string().optional(),
+    mediaType: z.enum(ALLOWED_MEDIA_TYPES).optional(),
+  })
+  .refine((data) => data.message.length > 0 || data.imageData !== undefined, {
+    message: "メッセージまたは画像が必要です",
+  });
 
 // POST /api/chat
 app.post("/chat", zValidator("json", chatSchema), async (c) => {
-  const { message, sessionId } = c.req.valid("json");
+  const { message, sessionId, imageData, mediaType } = c.req.valid("json");
 
   // 既存の会話履歴をMongoDBから取得
   let session;
@@ -30,14 +43,38 @@ app.post("/chat", zValidator("json", chatSchema), async (c) => {
   }
 
   // Mastra用メッセージ配列を構築（履歴 + 新しいユーザーメッセージ）
-  const history: CoreMessage[] = (session?.messages ?? []).map((m) => ({
-    role: m.role as "user" | "assistant",
-    content: m.content,
-  }));
-  const messages: CoreMessage[] = [
-    ...history,
-    { role: "user", content: message },
-  ];
+  const history: CoreMessage[] = (session?.messages ?? []).map((m): CoreMessage => {
+    if (m.imageData && m.mediaType) {
+      // 画像付きメッセージはユーザーメッセージのみ
+      return {
+        role: "user" as const,
+        content: [
+          { type: "image" as const, image: m.imageData, mimeType: m.mediaType },
+          ...(m.content ? [{ type: "text" as const, text: m.content }] : []),
+        ],
+      };
+    }
+    if (m.role === "assistant") {
+      return { role: "assistant" as const, content: m.content };
+    }
+    return { role: "user" as const, content: m.content };
+  });
+
+  // 新しいユーザーメッセージを構築
+  let newUserMessage: CoreMessage;
+  if (imageData && mediaType) {
+    const contentParts: CoreMessage["content"] = [
+      { type: "image", image: imageData, mimeType: mediaType },
+    ];
+    if (message) {
+      contentParts.push({ type: "text", text: message });
+    }
+    newUserMessage = { role: "user", content: contentParts };
+  } else {
+    newUserMessage = { role: "user", content: message };
+  }
+
+  const messages: CoreMessage[] = [...history, newUserMessage];
 
   // ユーザーメッセージをMongoDBに保存
   try {
@@ -45,10 +82,14 @@ app.post("/chat", zValidator("json", chatSchema), async (c) => {
       where: { sessionId },
       create: {
         sessionId,
-        messages: { create: { role: "user", content: message } },
+        messages: {
+          create: { role: "user", content: message, imageData, mediaType },
+        },
       },
       update: {
-        messages: { create: { role: "user", content: message } },
+        messages: {
+          create: { role: "user", content: message, imageData, mediaType },
+        },
       },
     });
   } catch (e) {
@@ -130,6 +171,8 @@ app.get("/chat/history/:sessionId", async (c) => {
     messages: session.messages.map((m) => ({
       role: m.role,
       content: m.content,
+      imageData: m.imageData ?? undefined,
+      mediaType: m.mediaType ?? undefined,
       createdAt: m.createdAt,
     })),
   });

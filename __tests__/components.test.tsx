@@ -44,6 +44,20 @@ describe("MessageBubble", () => {
     const cursor = container.querySelector(".animate-pulse");
     expect(cursor).not.toBeInTheDocument();
   });
+
+  it("imageDataがある場合は画像を表示する", () => {
+    const messageWithImage: Message = {
+      id: crypto.randomUUID(),
+      role: "user",
+      content: "この画像は？",
+      imageData: "abc123",
+      mediaType: "image/png",
+    };
+    render(<MessageBubble message={messageWithImage} />);
+    const img = screen.getByAltText("添付画像");
+    expect(img).toBeInTheDocument();
+    expect(img).toHaveAttribute("src", "data:image/png;base64,abc123");
+  });
 });
 
 describe("ChatInput", () => {
@@ -69,7 +83,7 @@ describe("ChatInput", () => {
     expect(onSend).not.toHaveBeenCalled();
   });
 
-  it("空文字列では送信しない", () => {
+  it("空文字列・画像なしでは送信しない", () => {
     const onSend = vi.fn();
     render(<ChatInput onSend={onSend} disabled={false} />);
     const textarea = screen.getByRole("textbox");
@@ -108,6 +122,20 @@ describe("ChatInput", () => {
     fireEvent.click(button);
 
     expect(onSend).toHaveBeenCalledWith("ボタン送信テスト");
+  });
+
+  it("画像添付ボタンが表示される", () => {
+    const onSend = vi.fn();
+    render(<ChatInput onSend={onSend} disabled={false} />);
+    const attachButton = screen.getByRole("button", { name: "画像を添付" });
+    expect(attachButton).toBeInTheDocument();
+  });
+
+  it("disabled=trueのとき画像添付ボタンが無効化される", () => {
+    const onSend = vi.fn();
+    render(<ChatInput onSend={onSend} disabled={true} />);
+    const attachButton = screen.getByRole("button", { name: "画像を添付" });
+    expect(attachButton).toBeDisabled();
   });
 });
 

@@ -4,6 +4,8 @@ export type Message = {
   id: string;
   role: "user" | "assistant";
   content: string;
+  imageData?: string;
+  mediaType?: string;
 };
 
 type Props = {
@@ -28,8 +30,17 @@ export default function MessageBubble({ message, isStreaming }: Props) {
             : "bg-white text-gray-800 border border-gray-200 rounded-tl-sm shadow-sm"
         }`}
       >
+        {message.imageData && message.mediaType && (
+          <img
+            src={`data:${message.mediaType};base64,${message.imageData}`}
+            alt="添付画像"
+            className="max-w-full rounded-lg mb-2 max-h-64 object-contain"
+          />
+        )}
         {isUser ? (
-          <p className="whitespace-pre-wrap break-words">{message.content}</p>
+          message.content && (
+            <p className="whitespace-pre-wrap break-words">{message.content}</p>
+          )
         ) : (
           <div className="prose prose-sm max-w-none prose-p:my-1 prose-pre:bg-gray-100 prose-pre:text-gray-800 prose-code:bg-gray-100 prose-code:px-1 prose-code:rounded">
             <Markdown>{message.content}</Markdown>

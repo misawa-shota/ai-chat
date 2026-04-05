@@ -22,5 +22,7 @@ model Message {
   session   Session  @relation(fields: [sessionId], references: [sessionId])
   role      String
   content   String
+  imageData String?
+  mediaType String?
   createdAt DateTime @default(now())
 }
