@@ -43,7 +43,7 @@ export default function ChatPage() {
             mediaType?: string;
           }[];
         }) => {
-          if (data.messages?.length > 0) {
+          if (data.messages && data.messages.length > 0) {
             setMessages(
               data.messages.map((m) =>
                 newMessage(

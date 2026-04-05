@@ -43,17 +43,21 @@ app.post("/chat", zValidator("json", chatSchema), async (c) => {
   }
 
   // Mastra用メッセージ配列を構築（履歴 + 新しいユーザーメッセージ）
-  const history: CoreMessage[] = (session?.messages ?? []).map((m) => {
+  const history: CoreMessage[] = (session?.messages ?? []).map((m): CoreMessage => {
     if (m.imageData && m.mediaType) {
-      const contentParts: CoreMessage["content"] = [
-        { type: "image", image: m.imageData, mimeType: m.mediaType },
-      ];
-      if (m.content) {
-        contentParts.push({ type: "text", text: m.content });
-      }
-      return { role: m.role as "user" | "assistant", content: contentParts };
+      // 画像付きメッセージはユーザーメッセージのみ
+      return {
+        role: "user" as const,
+        content: [
+          { type: "image" as const, image: m.imageData, mimeType: m.mediaType },
+          ...(m.content ? [{ type: "text" as const, text: m.content }] : []),
+        ],
+      };
     }
-    return { role: m.role as "user" | "assistant", content: m.content };
+    if (m.role === "assistant") {
+      return { role: "assistant" as const, content: m.content };
+    }
+    return { role: "user" as const, content: m.content };
   });
 
   // 新しいユーザーメッセージを構築
